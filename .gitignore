@@ -1,0 +1,3 @@
+__pycache__/
+*.pyc
+# so _pycache_ and files do not get pushed to the repo
