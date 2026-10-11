@@ -51,7 +51,7 @@
 \draw[data] (col) -- node[above,lbs]{token} (er);
 \draw[data] (er) -- node[above,lbs]{64b} (xb);
 \draw[data] (xb) -- node[above,lbs]{32$\times$8b} (as);
-\draw[data] (as) -- node[above,lbs]{x, 8b} (mac);
+\draw[data] (as) -- node[above,lbs]{activation, 8b} (mac);
 \draw[data] (mac) -- node[above,lbs]{acc$\times$8} (am);
 \draw[data] (mac) -- node[right,lbs]{acc$\times$8} (pp);
 \draw[data] (pp) -- node[above,lbs]{8$\times$8b} (hb);
@@ -64,7 +64,7 @@
 \draw[ctrl,-] (-2.6,2.5) -- (28.4,2.5);
 \draw[ctrl,-] (-2.6,2.5) -- (-2.6,-6.8) -- (28.4,-6.8);
 \draw[ctrl] (7.0,3.5) -- (7.0,2.5);
-\foreach \x/\t in {8.8/{token_index},13.2/{input_vector_we,\\token_index},17.6/{output_layer,\\input_index},22.0/{load_bias,\\accumulate_en},27.0/{compare_en,\\lane_index}}{
+\foreach \x/\t in {8.8/{token_index},13.2/{input_vector_we,\\token_index},17.6/{output_layer,\\input_index},22.0/{load_bias,\\accumulate_en},27.0/{compare_en,\\argmax_clear,\\lane_index}}{
   \draw[ctrl] (\x,2.5) -- (\x,1.0);
   \node[lab,anchor=west] at (\x+0.1,1.75) {\t};
 }
@@ -105,14 +105,14 @@
 \draw[data] (pp) -- node[above,lab]{hidden_in\\{[63:0]}} (hb);
 \draw[data] (m0.east) -- ++(0.6,0) |- ([yshift=0.6cm]ml.west);
 \draw[data] (m1.east) -- ++(0.6,0) |- ([yshift=-0.6cm]ml.west);
-\draw[data] (ml.east) -- node[above,lab]{x[7:0]\\signed INT8} (27.9,4.1);
+\draw[data] (ml.east) -- node[above,lab]{activation[7:0]\\signed INT8} (27.9,4.1);
 
 \node[reg,minimum width=3.4cm,minimum height=1.2cm] (wa) at (0.4,-2.0) {\textbf{weight_address}\\{\scriptsize register, 9b}};
 \node[mem,minimum width=4.0cm,minimum height=1.8cm] (wrom) at (6.2,-2.0) {\textbf{weight ROM}\\\scriptsize 384 $\times$ 64b\\synchronous read};
-\node[box,minimum width=4.6cm,minimum height=1.4cm] (wsp) at (13.0,-2.0) {\textbf{byte split}\\{\scriptsize w_i = w_data[8i+7:8i]}};
+\node[box,minimum width=4.6cm,minimum height=1.4cm] (wsp) at (13.0,-2.0) {\textbf{byte split}\\{\scriptsize weight_i = weight_data[8i+7:8i]}};
 \draw[data] (wa) -- node[above,lbs]{9b} (wrom);
-\draw[data] (wrom) -- node[above,lab]{w_data[63:0]} (wsp);
-\draw[data] (wsp.east) -- node[above,lab]{w_0 \dots w_7\\8 $\times$ INT8} (27.9,-2.0);
+\draw[data] (wrom) -- node[above,lab]{weight_data[63:0]} (wsp);
+\draw[data] (wsp.east) -- node[above,lab]{weight_0 \dots weight_7\\8 $\times$ INT8} (27.9,-2.0);
 
 \node[reg,minimum width=3.4cm,minimum height=1.2cm] (ba) at (0.4,-5.6) {\textbf{bias_address}\\{\scriptsize register, 4b}};
 \node[mem,minimum width=4.0cm,minimum height=1.8cm] (brom) at (6.2,-5.6) {\textbf{bias ROM}\\\scriptsize 12 $\times$ 256b\\synchronous read};
@@ -124,7 +124,7 @@
 \node[box,minimum width=2.2cm,minimum height=14cm,fill=orange!15] (mac) at (29.0,0.4) {\textbf{MAC}\\\textbf{array}\\{\scriptsize 8 lanes}};
 
 \node[align=left,font=\small] at (13,-8.4) {Read timing: an address held in READ is captured at the clock edge and the ROM output is valid during the next state.\\
-The byte muxes and the 2:1 mux are combinational, so the activation $x$ is valid in the same cycle \texttt{input_index} is stable.};
+The byte muxes and the 2:1 mux are combinational, so the activation is valid in the same cycle \texttt{input_index} is stable.};
 \end{tikzpicture}}
 \end{center}
 
@@ -142,8 +142,8 @@ The byte muxes and the 2:1 mux are combinational, so the activation $x$ is valid
 \node[mux,minimum width=1.8cm,minimum height=2.2cm] (mx) at (8.9,0) {2:1 mux\\1: bias_i\\0: sum};
 \node[reg,minimum width=3.2cm,minimum height=2.2cm] (ar) at (12.2,0) {\textbf{acc_i}\\\scriptsize 32b signed\\enable =\\load_bias OR\\accumulate_en};
 
-\draw[data] (-1.8,0.318) -- node[above,pos=0.3,lab]{x[7:0] signed} (mul.north west);
-\draw[data] (-1.8,-0.318) -- node[below,pos=0.3,lab]{w_i[7:0] signed} (mul.south west);
+\draw[data] (-1.8,0.318) -- node[above,pos=0.3,lab]{activation[7:0] signed} (mul.north west);
+\draw[data] (-1.8,-0.318) -- node[below,pos=0.3,lab]{weight_i[7:0] signed} (mul.south west);
 \draw[data] (mul) -- node[above,lab]{p[15:0]} (se);
 \draw[data] (se) -- node[above,lab]{p[31:0]} (add);
 \draw[data] (add) -- node[above,lab]{sum[31:0]} (mx);
@@ -172,7 +172,7 @@ The byte muxes and the 2:1 mux are combinational, so the activation $x$ is valid
 \node[reg,minimum width=2.8cm] (hbo) at (29.9,0) {hidden_buf\\\scriptsize byte i of\\word group_index};
 \draw[data] (28.2,0) -- (hbo.west);
 
-\node[align=left,font=\small] at (13,-6.4) {Lanes 1 to 7 are identical copies. They share $x$, \texttt{load_bias}, and \texttt{accumulate_en}, and differ only in $w_i$, $bias_i$, and the accumulator they own.\\
+\node[align=left,font=\small] at (13,-6.4) {Lanes 1 to 7 are identical copies. They share the activation, \texttt{load_bias}, and \texttt{accumulate_en}, and differ only in weight_i, bias_i, and the accumulator they own.\\
 Why the post-processing is only wiring and one OR: for acc $\geq$ 0, acc $\gg$ 4 $>$ 127 exactly when any of acc[30:11] is set; otherwise the 7-bit result is acc[10:4].};
 \end{tikzpicture}}
 \end{center}
@@ -208,7 +208,7 @@ Why the post-processing is only wiring and one OR: for acc $\geq$ 0, acc $\gg$ 4
 \fill (15.2,-4.0) circle (1.6pt);
 \draw[data] (bi.south) -- node[right,lab]{best_index[5:0] $\to$ uart_tx} (10.4,-9.8);
 
-\node[align=left,font=\small] at (10,-11.2) {At start: best_value $\leftarrow -2^{31}$, best_index $\leftarrow$ 0. Logits arrive in increasing token order (group 0 lane 0 first),\\
+\node[align=left,font=\small] at (10,-11.2) {While argmax_clear is high (the FSM is in IDLE): best_value is held at $-2^{31}$ and best_index at 0. Logits arrive in increasing token order (group 0 lane 0 first),\\
 so the first logit equal to the maximum is the one recorded, which gives the lowest-index tie rule.};
 \end{tikzpicture}}
 \end{center}
@@ -232,7 +232,7 @@ so the first logit equal to the maximum is the one recorded, which gives the low
 \draw[data] (sr.south) -- ++(0,-1.5) -| node[pos=0.25,below,lab]{state} (ns.south);
 \draw[data] (6.6,6.6) -- node[right,lab]{start, output_layer} (ns.north);
 
-\foreach \yy/\nm in {6.2/input_vector_we,5.3/load_bias,4.4/accumulate_en,3.5/hidden_we,2.6/compare_en,1.7/done}{
+\foreach \yy/\nm in {6.4/input_vector_we,5.65/load_bias,4.9/accumulate_en,4.15/hidden_we,3.4/compare_en,2.65/argmax_clear,1.9/done}{
   \draw[data] (20.6,\yy) -- (23.2,\yy);
   \node[lab,anchor=west] at (23.2,\yy) {\nm};
 }
@@ -240,7 +240,7 @@ so the first logit equal to the maximum is the one recorded, which gives the low
 \foreach \x/\t in {0/{\textbf{token_index}\\\scriptsize 2b\\clear: start\\inc: EMBED_STORE},
                    4.3/{\textbf{input_index}\\\scriptsize 5b, wraps 31 to 0\\inc: ACCUMULATE},
                    8.6/{\textbf{group_index}\\\scriptsize 3b\\clear: start, layer change\\inc: group finished},
-                   12.9/{\textbf{lane_index}\\\scriptsize 3b, wraps 7 to 0\\inc: ARGMAX\\clear: leave ACCUMULATE},
+                   12.9/{\textbf{lane_index}\\\scriptsize 3b, wraps 7 to 0\\inc: ARGMAX\\clear: IDLE},
                    17.2/{\textbf{weight_address}\\\scriptsize 9b\\clear: start\\inc: ACCUMULATE},
                    21.5/{\textbf{bias_address}\\\scriptsize 4b\\clear: start\\inc: BIAS_LOAD},
                    25.8/{\textbf{output_layer}\\\scriptsize 1b\\clear: start\\set: last HIDDEN_STORE}}{
@@ -266,10 +266,11 @@ so the first logit equal to the maximum is the one recorded, which gives the low
 \midrule
 input_vector_we & EMBED_STORE: writes embed_data into input_vector word token_index \\
 load_bias & BIAS_LOAD: every accumulator loads its bias \\
-accumulate_en & ACCUMULATE: every accumulator adds x $\cdot$ w$_i$ \\
+accumulate_en & ACCUMULATE: every accumulator adds activation $\cdot$ weight$_i$ \\
 hidden_we & HIDDEN_STORE: writes the 8 post-processed bytes into hidden_buf word group_index \\
 compare_en & ARGMAX: lets the comparator update best_value and best_index \\
-done & DONE: starts uart_tx with best_index \\
+argmax_clear & IDLE: holds best_value at $-2^{31}$ and best_index at 0 \\
+done & DONE: starts uart_tx with best_index (it must be latched here, since IDLE clears it) \\
 \bottomrule
 \end{tabular}
 

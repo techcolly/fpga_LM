@@ -1,3 +1,12 @@
 __pycache__/
 *.pyc
 # so _pycache_ and files do not get pushed to the repo
+
+# Vivado
+vivado/proj/
+.Xil/
+*.jou
+*.log
+*.str
+*.wdb
+xsim.dir/
