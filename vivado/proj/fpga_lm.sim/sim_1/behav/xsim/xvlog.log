@@ -1,0 +1,4 @@
+INFO: [VRFC 10-2263] Analyzing SystemVerilog file "C:/Users/techcolly/Desktop/fpga_LM/rtl/uart/request_collector.sv" into library xil_defaultlib
+INFO: [VRFC 10-311] analyzing module request_collector
+INFO: [VRFC 10-2263] Analyzing SystemVerilog file "C:/Users/techcolly/Desktop/fpga_LM/tb/tb_request_collector.sv" into library xil_defaultlib
+INFO: [VRFC 10-311] analyzing module tb_request_collector

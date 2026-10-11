@@ -1,0 +1,24 @@
+#-----------------------------------------------------------
+# Vivado v2026.1 (64-bit)
+# SW Build 6511674 on Tue Jun 16 11:02:23 MDT 2026
+# IP Build 6504888 on Tue Jun 09 09:05:25 MDT 2026
+# SharedData Build 6501428 on Mon Jun 08 17:34:18 MDT 2026
+# Start of session at: Sat Oct 10 14:34:24 2026
+# Process ID         : 12616
+# Current directory  : C:/Users/techcolly/Desktop/fpga_LM/vivado/proj/fpga_lm.runs/impl_1
+# Command line       : vivado.exe -log fpga_top.vdi -applog -product Vivado -messageDb vivado.pb -mode batch -source fpga_top.tcl -notrace
+# Log file           : C:/Users/techcolly/Desktop/fpga_LM/vivado/proj/fpga_lm.runs/impl_1/fpga_top.vdi
+# Journal file       : C:/Users/techcolly/Desktop/fpga_LM/vivado/proj/fpga_lm.runs/impl_1\vivado.jou
+# Running On         : DESKTOP-KFA0SSS
+# Platform           : Windows 11
+# Operating System   : 26200
+# Processor Detail   : AMD Ryzen 7 7730U with Radeon Graphics         
+# CPU Frequency      : 1996 MHz
+# CPU Physical cores : 8
+# CPU Logical cores  : 16
+# Host memory        : 40631 MB
+# Swap memory        : 2550 MB
+# Total Virtual      : 43181 MB
+# Available Virtual  : 26184 MB
+#-----------------------------------------------------------
+source fpga_top.tcl -notrace
