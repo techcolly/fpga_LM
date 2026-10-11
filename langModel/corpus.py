@@ -9,38 +9,6 @@ what makes it realistic for the model to learn something recognizable.
 from langModel.vocab import STOI
 
 SENTENCES = [
-    # <part> <sensor> is <condition>
-    "soil moisture is low".split(),
-    "soil moisture is high".split(),
-    "soil moisture is critical".split(),
-    "soil temperature is cold".split(),
-    "soil temperature is warm".split(),
-    "leaf moisture is low".split(),
-    "leaf temperature is hot".split(),
-    "root moisture is critical".split(),
-    "root moisture is normal".split(),
-    "stem moisture is dry".split(),
-    "flower humidity is low".split(),
-    "plant humidity is normal".split(),
-    "plant light is bright".split(),
-    "plant light is dark".split(),
-    "leaf light is low".split(),
-
-    # <part> is <condition>
-    "soil is dry".split(),
-    "soil is wet".split(),
-    "leaf is dry".split(),
-    "leaf is healthy".split(),
-    "stem is healthy".split(),
-    "stem is stressed".split(),
-    "root is healthy".split(),
-    "root is stable".split(),
-    "flower is stressed".split(),
-    "flower is healthy".split(),
-    "plant is healthy".split(),
-    "plant is stressed".split(),
-    "plant is stable".split(),
-
     # <part> needs <action>
     "soil needs water".split(),
     "leaf needs water".split(),
@@ -60,15 +28,6 @@ SENTENCES = [
     "light is rising please adjust".split(),
     "light is falling please check".split(),
 
-    # <action> the <part> now
-    "water the soil now".split(),
-    "water the plant now".split(),
-    "check the leaf now".split(),
-    "check the root now".split(),
-    "monitor the stem now".split(),
-    "adjust the light now".split(),
-    "adjust the shade now".split(),
-
     # <sensor> <noun> is <condition> <state>
     "temperature is critical warning".split(),
     "moisture is critical danger".split(),
@@ -78,9 +37,6 @@ SENTENCES = [
     "sensor error please check".split(),
 
     # misc short alerts
-    "leaf is too dry".split(),
-    "soil is too wet".split(),
-    "light is too bright".split(),
     "sun is too bright today".split(),
     "night light is too dark".split(),
     "plant recover today".split(),
@@ -95,7 +51,115 @@ SENTENCES = [
     "temperature decrease today".split(),
     "plant is good today".split(),
     "plant is done today".split(),
+
+    # status question: "how is <part> ?"
+    "how is soil ? soil is wet".split(),
+    "how is leaf ? leaf is healthy".split(),
+    "how is stem ? stem is healthy".split(),
+    "how is root ? root is stable".split(),
+    "how is flower ? flower is healthy".split(),
+    "how is plant ? plant is healthy".split(),
+
+    # sensor question: "<sensor> ?"
+    "temperature ? temperature is normal".split(),
+    "moisture ? moisture is low".split(),
+    "humidity ? humidity is normal".split(),
+    "light ? light is bright".split(),
+    "sensor ? sensor is ok today".split(),
+
 ]
+
+# Condition -> advice. The user states a condition ("soil is dry") and the
+# model continues with what to do. This is a tiny learned lookup table; there
+# is no sensor, the condition comes from whatever the user types.
+OK = "the plant is ok today"
+WATER = "the soil needs water"
+SHADE = "adjust the shade now"
+SUN = "the plant needs sun"
+ROOT = "please check the root now"
+LEAF = "please check the leaf now"
+LIGHT = "adjust the light now"
+
+PART_ADVICE = {  # "<part> is <condition> <advice>"
+    ("soil", "dry"): WATER, ("soil", "wet"): ROOT, ("soil", "hot"): SHADE, ("soil", "cold"): SUN,
+    ("root", "dry"): WATER, ("root", "wet"): ROOT, ("root", "healthy"): OK, ("root", "stable"): OK,
+    ("leaf", "dry"): WATER, ("leaf", "wet"): ROOT, ("leaf", "hot"): SHADE, ("leaf", "healthy"): OK,
+    ("stem", "dry"): WATER, ("stem", "healthy"): OK, ("stem", "stressed"): LEAF,
+    ("flower", "dry"): WATER, ("flower", "healthy"): OK, ("flower", "stressed"): LEAF,
+    ("plant", "dry"): WATER, ("plant", "wet"): ROOT, ("plant", "hot"): SHADE, ("plant", "cold"): SUN,
+    ("plant", "bright"): SHADE, ("plant", "dark"): SUN, ("plant", "healthy"): OK,
+    ("plant", "stable"): OK, ("plant", "stressed"): LEAF,
+}
+
+SENSOR_ADVICE = {  # "<sensor> is <condition> <advice>"
+    ("moisture", "low"): WATER, ("moisture", "high"): ROOT, ("moisture", "normal"): OK,
+    ("temperature", "high"): SHADE, ("temperature", "hot"): SHADE,
+    ("temperature", "low"): SUN, ("temperature", "cold"): SUN, ("temperature", "normal"): OK,
+    ("light", "low"): LIGHT, ("light", "dark"): LIGHT, ("light", "high"): SHADE,
+    ("light", "bright"): SHADE, ("light", "normal"): OK,
+    ("humidity", "low"): WATER, ("humidity", "high"): SHADE, ("humidity", "normal"): OK,
+}
+
+COMBO_ADVICE = {  # "<part> <sensor> is <condition> <advice>"
+    ("soil", "moisture", "low"): WATER, ("soil", "moisture", "high"): ROOT,
+    ("soil", "moisture", "normal"): OK,
+    ("leaf", "temperature", "hot"): SHADE, ("leaf", "temperature", "cold"): SUN,
+    ("leaf", "temperature", "normal"): OK,
+    ("plant", "light", "bright"): SHADE, ("plant", "light", "dark"): LIGHT,
+    ("plant", "light", "low"): LIGHT,
+    ("plant", "humidity", "low"): WATER, ("plant", "humidity", "high"): SHADE,
+    ("plant", "humidity", "normal"): OK,
+}
+
+TOO_ADVICE = {  # "<subject> is too <condition> <advice>"
+    ("leaf", "dry"): WATER, ("soil", "dry"): WATER, ("soil", "wet"): ROOT,
+    ("plant", "hot"): SHADE, ("plant", "cold"): SUN, ("light", "bright"): SHADE,
+}
+
+for (a, cond), advice in PART_ADVICE.items():
+    SENTENCES.append(f"{a} is {cond} {advice}".split())
+    SENTENCES.append(f"the {a} is {cond} {advice}".split())
+for (a, cond), advice in SENSOR_ADVICE.items():
+    SENTENCES.append(f"{a} is {cond} {advice}".split())
+    SENTENCES.append(f"the {a} is {cond} {advice}".split())
+for (a, b, cond), advice in COMBO_ADVICE.items():
+    SENTENCES.append(f"{a} {b} is {cond} {advice}".split())
+for (a, cond), advice in TOO_ADVICE.items():
+    SENTENCES.append(f"{a} is too {cond} {advice}".split())
+
+
+# Shorter phrasings without "is" ("plant dry"), and commands that get "done".
+# "please" is stripped by the chat layer, so it is not trained here.
+for (a, cond), advice in PART_ADVICE.items():
+    SENTENCES.append(f"{a} {cond} {advice}".split())
+for (a, cond), advice in SENSOR_ADVICE.items():
+    SENTENCES.append(f"{a} {cond} {advice}".split())
+for (a, b, cond), advice in COMBO_ADVICE.items():
+    SENTENCES.append(f"{a} {b} {cond} {advice}".split())
+
+COMMANDS = [
+    ("water", "soil"), ("water", "plant"), ("check", "leaf"), ("check", "root"),
+    ("monitor", "stem"), ("adjust", "light"), ("adjust", "shade"),
+]
+for verb, thing in COMMANDS:
+    SENTENCES.append(f"{verb} the {thing} done".split())
+
+# Natural phrasings of the status questions ("how is the plant ?").
+STATUS_ANSWER = {
+    "soil": "soil is wet", "leaf": "leaf is healthy", "stem": "stem is healthy",
+    "root": "root is stable", "flower": "flower is healthy", "plant": "plant is healthy",
+}
+SENSOR_ANSWER = {
+    "temperature": "temperature is normal", "moisture": "moisture is low",
+    "humidity": "humidity is normal", "light": "light is bright", "sensor": "sensor is ok today",
+}
+for part, answer in STATUS_ANSWER.items():
+    SENTENCES.append(f"how is the {part} ? {answer}".split())
+    SENTENCES.append(f"{part} ? {answer}".split())
+for sensor, answer in SENSOR_ANSWER.items():
+    SENTENCES.append(f"what is {sensor} ? {answer}".split())
+    SENTENCES.append(f"what is the {sensor} ? {answer}".split())
+    SENTENCES.append(f"how is the {sensor} ? {answer}".split())
 
 _unknown = {w for s in SENTENCES for w in s if w not in STOI}
 assert not _unknown, f"corpus uses words outside the 64-token vocab: {sorted(_unknown)}"

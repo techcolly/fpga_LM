@@ -1,9 +1,11 @@
 """Trains TinyLM on the plant-monitoring corpus and samples some generations.
 
-Full-batch gradient descent (no mini-batching): 348 examples and 3,680
-parameters both fit trivially in memory, so there's no reason to add batching
-complexity here.
+Full-batch gradient descent (no mini-batching): the training windows and the
+3,680 parameters both fit trivially in memory, so there's no reason to add
+batching complexity here.
 """
+
+from pathlib import Path
 
 import torch
 import torch.nn.functional as F
@@ -21,7 +23,7 @@ def build_dataset():
     return contexts, targets
 
 
-def train(epochs=300, lr=0.05):
+def train(epochs=1500, lr=0.05):
     contexts, targets = build_dataset()
     model = TinyLM()
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
@@ -33,7 +35,7 @@ def train(epochs=300, lr=0.05):
         loss.backward()
         optimizer.step()
 
-        if epoch % 50 == 0 or epoch == epochs - 1:
+        if epoch % 250 == 0 or epoch == epochs - 1:
             acc = (logits.argmax(dim=-1) == targets).float().mean().item()
             print(f"epoch {epoch:4d}  loss={loss.item():.4f}  train_acc={acc:.3f}")
 
@@ -60,7 +62,7 @@ def generate(model, prompt_words=(), max_len=12):
 
 if __name__ == "__main__":
     model = train()
-    torch.save(model.state_dict(), "langModel/checkpoint.pt")
+    torch.save(model.state_dict(), Path(__file__).resolve().parent / "checkpoint.pt")
 
     print("\nsample generations:")
     for seed in [(), ("soil",), ("plant", "needs"), ("temperature", "is"), ("leaf",)]:

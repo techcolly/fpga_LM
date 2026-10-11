@@ -12,12 +12,15 @@ SPECIAL_TOKENS = ["<pad>", "<bos>", "<eos>", "<unk>"]
 
 PLANT_PARTS = ["soil", "leaf", "stem", "root", "flower", "plant"]
 
-SENSOR_NOUNS = ["moisture", "temperature", "light", "humidity", "sensor", "level"]
+SENSOR_NOUNS = ["moisture", "temperature", "light", "humidity", "sensor"]
 
 CONDITIONS = [
-    "dry", "wet", "hot", "cold", "bright", "dark", "humid", "cool",
+    "dry", "wet", "hot", "cold", "bright", "dark",
     "warm", "low", "high", "normal", "critical", "stable",
 ]
+
+# Question markers so prompts like "soil dry what ?" can be answered.
+QUESTION = ["?", "what", "how"]
 
 ACTIONS = [
     "water", "check", "needs", "alert", "warn", "grow", "wilt", "droop",
@@ -38,6 +41,7 @@ VOCAB = (
     + ACTIONS
     + STATES
     + CONNECTORS
+    + QUESTION
     + EXTRA
 )
 
