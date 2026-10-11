@@ -28,15 +28,6 @@ SENTENCES = [
     "light is rising please adjust".split(),
     "light is falling please check".split(),
 
-    # <action> the <part> now
-    "water the soil now".split(),
-    "water the plant now".split(),
-    "check the leaf now".split(),
-    "check the root now".split(),
-    "monitor the stem now".split(),
-    "adjust the light now".split(),
-    "adjust the shade now".split(),
-
     # <sensor> <noun> is <condition> <state>
     "temperature is critical warning".split(),
     "moisture is critical danger".split(),
@@ -61,20 +52,6 @@ SENTENCES = [
     "plant is good today".split(),
     "plant is done today".split(),
 
-    # question -> answer: "<part> <condition> what ?" gets a recommended action
-    "soil dry what ? water the soil now".split(),
-    "soil wet what ? check the root now".split(),
-    "root dry what ? water the soil now".split(),
-    "leaf dry what ? water the soil now".split(),
-    "leaf hot what ? adjust the shade now".split(),
-    "plant hot what ? adjust the shade now".split(),
-    "plant cold what ? plant needs sun".split(),
-    "stem droop what ? water the soil now".split(),
-    "light dark what ? plant needs sun".split(),
-    "light bright what ? adjust the shade now".split(),
-    "humidity low what ? water the soil now".split(),
-    "temperature high what ? adjust the shade now".split(),
-
     # status question: "how is <part> ?"
     "how is soil ? soil is wet".split(),
     "how is leaf ? leaf is healthy".split(),
@@ -90,11 +67,6 @@ SENTENCES = [
     "light ? light is bright".split(),
     "sensor ? sensor is ok today".split(),
 
-    # commands get an acknowledgement
-    "water the plant please done".split(),
-    "water the soil please done".split(),
-    "check the leaf please ok".split(),
-    "check the root please ok".split(),
 ]
 
 # Condition -> advice. The user states a condition ("soil is dry") and the
@@ -156,6 +128,22 @@ for (a, cond), advice in TOO_ADVICE.items():
     SENTENCES.append(f"{a} is too {cond} {advice}".split())
 
 
+# Shorter phrasings without "is" ("plant dry"), and commands that get "done".
+# "please" is stripped by the chat layer, so it is not trained here.
+for (a, cond), advice in PART_ADVICE.items():
+    SENTENCES.append(f"{a} {cond} {advice}".split())
+for (a, cond), advice in SENSOR_ADVICE.items():
+    SENTENCES.append(f"{a} {cond} {advice}".split())
+for (a, b, cond), advice in COMBO_ADVICE.items():
+    SENTENCES.append(f"{a} {b} {cond} {advice}".split())
+
+COMMANDS = [
+    ("water", "soil"), ("water", "plant"), ("check", "leaf"), ("check", "root"),
+    ("monitor", "stem"), ("adjust", "light"), ("adjust", "shade"),
+]
+for verb, thing in COMMANDS:
+    SENTENCES.append(f"{verb} the {thing} done".split())
+
 # Natural phrasings of the status questions ("how is the plant ?").
 STATUS_ANSWER = {
     "soil": "soil is wet", "leaf": "leaf is healthy", "stem": "stem is healthy",
@@ -167,6 +155,7 @@ SENSOR_ANSWER = {
 }
 for part, answer in STATUS_ANSWER.items():
     SENTENCES.append(f"how is the {part} ? {answer}".split())
+    SENTENCES.append(f"{part} ? {answer}".split())
 for sensor, answer in SENSOR_ANSWER.items():
     SENTENCES.append(f"what is {sensor} ? {answer}".split())
     SENTENCES.append(f"what is the {sensor} ? {answer}".split())
