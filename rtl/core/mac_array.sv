@@ -1,4 +1,4 @@
-// mac_array.sv — eight mac_lane instances sharing one activation; lane i uses weight byte i and bias word i.
+// mac_array.sv — eight mac_lane instances sharing one registered activation; lane i uses weight byte i and bias word i, and the weight must arrive one clock after its activation.
 
 module mac_array (
     input   logic clk, load_bias, accumulate_en,
@@ -9,6 +9,10 @@ module mac_array (
     output  logic[255:0] accumulator_word
 );
 
+logic signed[7:0] activation_reg;
+
+always_ff @(posedge clk) activation_reg <= activation;
+
 genvar lane;
 
 generate
@@ -17,7 +21,7 @@ generate
             .clk           (clk),
             .load_bias     (load_bias),
             .accumulate_en (accumulate_en),
-            .activation    (activation),
+            .activation    (activation_reg),
             .weight        (weight_word[8*lane+7:8*lane]),
             .bias          (bias_word[32*lane+31:32*lane]),
             .accumulator   (accumulator_word[32*lane+31:32*lane])

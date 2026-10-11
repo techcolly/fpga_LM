@@ -198,18 +198,20 @@ The hardware realizes this without a comparator on the shifted value. For a non-
 \texttt{EMBED_READ}, \texttt{EMBED_STORE} ($\times 4$) & $x[8k..8k+7]\leftarrow E_{t_k}$ for $k=0..3$ & 8 \\
 \texttt{BIAS_READ}, \texttt{BIAS_LOAD} & $a_{8g+k}\leftarrow b1_{8g+k}$ for the 8 lanes & 2 \\
 \texttt{WEIGHT_READ}, \texttt{ACCUMULATE} ($\times 32$) & $a_{8g+k}\mathrel{+}=W1_{8g+k,j}\,x_j$ for $j=0..31$ & 64 \\
+\texttt{DRAIN} & the last product, which is one clock behind, is added into the accumulators & 1 \\
 \texttt{HIDDEN_STORE} & $h_{8g+k}\leftarrow\mathrm{clamp}(\mathrm{ReLU}(a_{8g+k})\gg 4)$ & 1 \\
-\multicolumn{2}{@{}l}{\emph{those three rows repeat for groups $g=0..3$: $4\times 67=268$ cycles}} & \\
+\multicolumn{2}{@{}l}{\emph{those four rows repeat for groups $g=0..3$: $4\times 68=272$ cycles}} & \\
 \texttt{BIAS_READ}, \texttt{BIAS_LOAD} & $z_{8g+k}\leftarrow b2_{8g+k}$ & 2 \\
 \texttt{WEIGHT_READ}, \texttt{ACCUMULATE} ($\times 32$) & $z_{8g+k}\mathrel{+}=W2_{8g+k,j}\,h_j$ & 64 \\
+\texttt{DRAIN} & as above & 1 \\
 \texttt{ARGMAX} ($\times 8$) & compare $z_{8g+k}$ with the best so far, one value per cycle & 8 \\
-\multicolumn{2}{@{}l}{\emph{those three rows repeat for groups $g=0..7$: $8\times 74=592$ cycles}} & \\
+\multicolumn{2}{@{}l}{\emph{those four rows repeat for groups $g=0..7$: $8\times 75=600$ cycles}} & \\
 \texttt{DONE} & report $t_{\mathrm{next}}=\text{best\_index}$ & 1 \\
 \bottomrule
 \end{tabular}
 \end{center}
 
-Total: $8+268+592+1=869$ cycles, about 8.7\,\textmu s at 100\,MHz.
+Total: $8+272+600+1=881$ cycles, about 8.8\,\textmu s at 100\,MHz. The \texttt{DRAIN} cycles exist because each MAC lane registers its product before adding it, which is what lets the multiplier use a DSP slice and the design run at 100\,MHz.
 
 \section*{7. What the Python side must agree on}
 

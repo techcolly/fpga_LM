@@ -37,7 +37,8 @@ The same 8-lane MAC array and the same states serve both layers; only the \textt
 
 \node[state] (am)   at (0,-6.4)    {\textbf{ARGMAX}\\{\scriptsize compare one logit per cycle}};
 \node[state] (hs)   at (5.8,-6.4)  {\textbf{HIDDEN_STORE}\\{\scriptsize ReLU, shift, clamp, store}};
-\node[state] (acc)  at (11.6,-6.4) {\textbf{ACCUMULATE}\\{\scriptsize accumulator += product}};
+\node[state] (acc)  at (11.6,-6.4) {\textbf{ACCUMULATE}\\{\scriptsize start one multiply-add}};
+\node[state] (dr)   at (11.6,-9.6) {\textbf{DRAIN}\\{\scriptsize last product lands}};
 \node[state] (done) at (-5.8,-6.4) {\textbf{DONE}\\{\scriptsize done = 1 for one cycle}};
 
 \draw[tr] (idle) -- node[above,lab]{start = 1} (er);
@@ -53,9 +54,10 @@ The same 8-lane MAC array and the same states serve both layers; only the \textt
 \draw[tr] (wr) to[bend left=18] (acc);
 \draw[tr] (acc) to[bend left=18] node[left,lab]{input_index $<$ 31} (wr);
 
-\draw[tr] (acc) -- node[above,lab]{last input,\\hidden layer} (hs);
-\draw[tr] (acc.south) -- (11.6,-8.2) -- (0,-8.2) -- (am.south);
-\node[lab] at (5.8,-8.2) {last input, output layer};
+\draw[tr] (acc) -- node[right,lab]{last input} (dr);
+\draw[tr] (dr.west) -| node[pos=0.25,above,lab]{output_layer = 0} (hs.south);
+\draw[tr] (dr.south) -- (11.6,-10.9) -- (0,-10.9) -- (am.south);
+\node[lab] at (5.8,-10.9) {output_layer = 1};
 
 \draw[tr] (hs.north west) -- node[right,lab]{next group, or\\start output layer} (br.south east);
 
@@ -85,10 +87,11 @@ EMBED_STORE & token_index = 3 & BIAS_READ & input_vector word 3 $\leftarrow$ emb
 BIAS_READ & always & BIAS_LOAD & bias ROM latches the word at bias_address \\
 BIAS_LOAD & always & WEIGHT_READ & accumulator$_i$ $\leftarrow$ bias$_i$ for all 8 lanes; bias_address $\leftarrow$ bias_address + 1 \\
 \midrule
-WEIGHT_READ & always & ACCUMULATE & weight ROM latches the word at weight_address. The activation is selected combinationally from input_vector (output_layer = 0) or hidden_buf (output_layer = 1) using input_index \\
-ACCUMULATE & input_index $<$ 31 & WEIGHT_READ & accumulator$_i$ $\leftarrow$ accumulator$_i$ + activation $\cdot$ weight$_i$; weight_address $\leftarrow$ weight_address + 1; input_index $\leftarrow$ input_index + 1 \\
-ACCUMULATE & input_index = 31, output_layer = 0 & HIDDEN_STORE & accumulate as above; input_index $\leftarrow$ 0 \\
-ACCUMULATE & input_index = 31, output_layer = 1 & ARGMAX & accumulate as above; input_index $\leftarrow$ 0 \\
+WEIGHT_READ & always & ACCUMULATE & weight ROM latches the word at weight_address. The activation is selected from input_vector (output_layer = 0) or hidden_buf (output_layer = 1) using input_index, and mac_array registers it \\
+ACCUMULATE & input_index $<$ 31 & WEIGHT_READ & each lane registers activation $\cdot$ weight$_i$; one clock later it adds that product into accumulator$_i$; weight_address $\leftarrow$ weight_address + 1; input_index $\leftarrow$ input_index + 1 \\
+ACCUMULATE & input_index = 31 & DRAIN & same multiply-add; input_index $\leftarrow$ 0 \\
+DRAIN & output_layer = 0 & HIDDEN_STORE & no register updates: waits one clock so the last product reaches the accumulators \\
+DRAIN & output_layer = 1 & ARGMAX & same wait \\
 \midrule
 HIDDEN_STORE & group_index $<$ 3 & BIAS_READ & hidden_buf byte group $\leftarrow$ clamp(ReLU(accumulator$_i$) $\gg$ 4) for 8 lanes; group_index $\leftarrow$ group_index + 1 \\
 HIDDEN_STORE & group_index = 3 & BIAS_READ & same store; output_layer $\leftarrow$ 1; group_index $\leftarrow$ 0 \\
@@ -128,7 +131,7 @@ Word bits [8i+7:8i] hold $W[8\cdot\mathrm{group}+i][\mathrm{input}]$ and go to l
 
 Bias ROM: 12 words of 256 bits (8 $\times$ INT32), words 0--3 for the hidden layer and 4--11 for the output layer. Embedding ROM: 64 words of 64 bits (8 $\times$ INT8).
 
-Latency: 8 cycles of embedding, 4 $\times$ 67 cycles for the hidden layer, 8 $\times$ 74 for the output layer, plus DONE, about 870 cycles or 8.7 $\mu$s. One UART byte at 115200 baud takes 87 $\mu$s, so the sequencing cost is negligible.
+Latency: 8 cycles of embedding, 4 $\times$ 68 cycles for the hidden layer, 8 $\times$ 75 for the output layer, plus DONE, 881 cycles or 8.8 $\mu$s. One UART byte at 115200 baud takes 87 $\mu$s, so the sequencing cost is negligible.
 \normalsize
 
 \begin{landscape}
@@ -142,7 +145,7 @@ Latency: 8 cycles of embedding, 4 $\times$ 67 cycles for the hidden layer, 8 $\t
   reg/.style={draw,minimum width=1.8cm,minimum height=0.9cm,fill=green!12,font=\small},
   bus/.style={very thick}]
 
-\node[box,text width=7.4cm] (actsrc) at (-2.6,-3.5) {\textbf{activation select}\\hidden layer: input_vector[input_index]\\output layer: hidden_buf[input_index]\\{\scriptsize INT8, one value}};
+\node[box,text width=7.4cm] (actsrc) at (-2.6,-3.5) {\textbf{activation select}\\hidden layer: input_vector[input_index]\\output layer: hidden_buf[input_index]\\{\scriptsize INT8, one value, registered once}};
 \node[box,text width=7.4cm] (rom) at (-2.6,-9.0) {\textbf{weight ROM}\\address = weight_address\\{\scriptsize one 64-bit word = 8 $\times$ INT8}};
 
 \draw[bus] (2.4,0.3) -- (2.4,-7.4);
@@ -154,43 +157,47 @@ Latency: 8 cycles of embedding, 4 $\times$ 67 cycles for the hidden layer, 8 $\t
 
 \foreach \y/\i in {0/0,-3.0/1,-7.0/7}{
   \node[op]  (m\i) at (6.0,\y)  {$\times$};
-  \node[op]  (a\i) at (8.6,\y)  {$+$};
-  \node[reg] (r\i) at (11.2,\y) {acc$_{\i}$};
-  \draw[->] (m\i) -- (a\i);
+  \node[reg,minimum width=1.9cm] (p\i) at (8.7,\y) {product$_{\i}$};
+  \node[op]  (a\i) at (11.3,\y) {$+$};
+  \node[reg] (r\i) at (13.9,\y) {acc$_{\i}$};
+  \draw[->] (m\i) -- (p\i);
+  \draw[->] (p\i) -- (a\i);
   \draw[->] (a\i) -- (r\i);
   \draw[->] (r\i.south) -- ++(0,-0.65) -| (a\i.south);
-  \draw[->,dashed] (11.2,\y+1.25) -- (r\i.north);
-  \node[font=\scriptsize,above] at (11.2,\y+1.25) {bias$_{\i}$ (BIAS_LOAD)};
+  \draw[->,dashed] (13.9,\y+1.25) -- (r\i.north);
+  \node[font=\scriptsize,above] at (13.9,\y+1.25) {bias$_{\i}$ (BIAS_LOAD)};
   \draw[->] (2.4,0 |- m\i.south west) -- (m\i.south west);
   \fill (2.4,0 |- m\i.south west) circle (1.6pt);
   \draw[->] (3.3,0 |- m\i.north west) -- node[above,pos=0.55,font=\scriptsize]{weight$_{\i}$} (m\i.north west);
   \fill (3.3,0 |- m\i.north west) circle (1.6pt);
-  \draw[->,thick] (r\i.east) -- (13.6,\y);
-  \fill (13.6,\y) circle (1.6pt);
+  \draw[->,thick] (r\i.east) -- (16.2,\y);
+  \fill (16.2,\y) circle (1.6pt);
 }
 \node at (6.0,-5.0) {$\vdots$};
-\node at (8.6,-5.0) {$\vdots$};
-\node at (11.2,-5.0) {$\vdots$};
+\node at (8.7,-5.0) {$\vdots$};
+\node at (11.3,-5.0) {$\vdots$};
+\node at (13.9,-5.0) {$\vdots$};
 
-\draw[bus] (13.6,0) -- (13.6,-7.0);
-\node[font=\scriptsize,above,align=center] at (13.6,0.2) {acc$_{0..7}$\\8 $\times$ INT32};
+\draw[bus] (16.2,0) -- (16.2,-7.0);
+\node[font=\scriptsize,above,align=center] at (16.2,0.2) {acc$_{0..7}$\\8 $\times$ INT32};
 
-\node[box,text width=4.3cm] (pp) at (17.6,-1.5) {\textbf{post_process}\\ReLU, shift right 4,\\clamp to [0,127]\\$\rightarrow$ hidden_buf\\{\scriptsize hidden layer, HIDDEN_STORE}};
-\node[box,text width=4.3cm] (am) at (17.6,-5.5) {\textbf{argmax}\\lane_index selects acc$_i$\\strict $>$ keeps lowest index\\{\scriptsize output layer, ARGMAX}};
-\draw[->,thick] (13.6,-3.5) -- (14.7,-3.5);
-\draw[->,thick] (14.7,-3.5) |- (pp.west);
-\draw[->,thick] (14.7,-3.5) |- (am.west);
-\fill (14.7,-3.5) circle (1.6pt);
+\node[box,text width=4.3cm] (pp) at (20.2,-1.5) {\textbf{post_process}\\ReLU, shift right 4,\\clamp to [0,127]\\$\rightarrow$ hidden_buf\\{\scriptsize hidden layer, HIDDEN_STORE}};
+\node[box,text width=4.3cm] (am) at (20.2,-5.5) {\textbf{argmax}\\lane_index selects acc$_i$\\strict $>$ keeps lowest index\\{\scriptsize output layer, ARGMAX}};
+\draw[->,thick] (16.2,-3.5) -- (17.3,-3.5);
+\draw[->,thick] (17.3,-3.5) |- (pp.west);
+\draw[->,thick] (17.3,-3.5) |- (am.west);
+\fill (17.3,-3.5) circle (1.6pt);
 
-\node[box,dashed,text width=9cm] (ctl) at (8.6,2.9) {\textbf{FSM control, shared by all 8 lanes}\\bias_load in BIAS_LOAD, accumulate in ACCUMULATE};
+\node[box,dashed,text width=14cm] (ctl) at (11.3,2.9) {\textbf{FSM control, shared by all 8 lanes}\\bias_load in BIAS_LOAD; accumulate_en in ACCUMULATE, delayed one clock inside each lane};
 \draw[->,dashed] (ctl.south) -- (a0.north);
 \end{tikzpicture}}
 \end{center}
 
-Every ACCUMULATE cycle, lane $i$ performs
-$\mathit{acc}_i \leftarrow \mathit{acc}_i + \mathit{activation} \cdot \mathit{weight}_i$,
-where the activation (INT8) is the same for all eight lanes and weight$_i$ (INT8) is that lane's own slice of the weight word.
-The products are INT8 $\times$ INT8 $\to$ 16-bit signed, sign-extended into the 32-bit signed accumulator.
+In an ACCUMULATE cycle, lane $i$ multiplies the registered activation by its weight$_i$ and stores the 16-bit product in its product register; one clock later it performs
+$\mathit{acc}_i \leftarrow \mathit{acc}_i + \mathit{product}_i$.
+The activation (INT8) is registered once and shared by all eight lanes, and weight$_i$ (INT8) is that lane's own slice of the weight word. The weight ROM output is itself registered, so the activation and the weight word meet at the multipliers in the same ACCUMULATE cycle.
+The product is INT8 $\times$ INT8 $\to$ 16-bit signed, sign-extended into the 32-bit signed accumulator.
+The product register is what lets the multiplier map onto a DSP slice and the design meet 100 MHz; the cost is the DRAIN state, one extra clock after the last input of each group.
 In BIAS_LOAD the accumulator is loaded with the lane's 32-bit bias instead of the sum.
 The lanes never exchange data with each other, which is what distinguishes this from a systolic array.
 

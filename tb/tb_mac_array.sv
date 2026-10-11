@@ -40,8 +40,11 @@ task load_biases(input string message);
     check(message);
 endtask
 
+// the activation goes in first (it is registered once), the weights and accumulate_en one clock later,
+// and the sum lands one more clock after that, the same order the FSM uses
 task accumulate_step(input int activation_value, input string message);
     activation = activation_value;
+    @(negedge clk);
     for (int lane = 0; lane < 8; lane++) begin
         weight_word[8*lane +: 8]   = weight_values[lane];
         expected_accumulator[lane] = expected_accumulator[lane] + activation_value * weight_values[lane];
@@ -49,14 +52,15 @@ task accumulate_step(input int activation_value, input string message);
     accumulate_en = 1'b1;
     @(negedge clk);
     accumulate_en = 1'b0;
+    @(negedge clk);
     check(message);
 endtask
 
 task hold_step(input string message);
-    activation = 8'sd100;
-    weight_word = 64'h7F7F7F7F7F7F7F7F;
+    activation    = 8'sd100;
+    weight_word   = 64'h7F7F7F7F7F7F7F7F;
     accumulate_en = 1'b0;
-    @(negedge clk);
+    repeat (3) @(negedge clk);
     check(message);
 endtask
 

@@ -7,7 +7,7 @@ module inference_fsm (
             logic output_layer,
             logic[1:0] token_index,
             logic[2:0] group_index, lane_index,
-            logic[3:0] bias_address,
+            logic[3:0] bias_address, state,
             logic[4:0] input_index,
             logic[8:0] weight_address
 );
@@ -22,8 +22,9 @@ localparam logic[3:0] ACCUMULATE   = 4'd6;
 localparam logic[3:0] HIDDEN_STORE = 4'd7;
 localparam logic[3:0] ARGMAX       = 4'd8;
 localparam logic[3:0] DONE         = 4'd9;
+localparam logic[3:0] DRAIN        = 4'd10;
 
-logic[3:0] state, next_state;
+logic[3:0] next_state;
 logic      token_last, input_last, hidden_group_last, output_group_last, lane_last;
 
 assign token_last        = (token_index == 2'd3);
@@ -52,9 +53,12 @@ always_comb begin
         BIAS_LOAD:   next_state = WEIGHT_READ;
         WEIGHT_READ: next_state = ACCUMULATE;
         ACCUMULATE: begin
-            if (!input_last)        next_state = WEIGHT_READ;
-            else if (output_layer)  next_state = ARGMAX;
-            else                    next_state = HIDDEN_STORE;
+            if (!input_last) next_state = WEIGHT_READ;
+            else             next_state = DRAIN;
+        end
+        DRAIN: begin
+            if (output_layer) next_state = ARGMAX;
+            else              next_state = HIDDEN_STORE;
         end
         HIDDEN_STORE: next_state = BIAS_READ;
         ARGMAX: begin

@@ -12,11 +12,7 @@ from pathlib import Path
 # Lets this file run directly (e.g. the editor's Run button) as well as via -m.
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-import torch
-
 from langModel.int_infer import generate_int
-from langModel.model import TinyLM
-from langModel.quantize import quantize_model
 from langModel.tokenizer import decode_ids, encode_word
 from langModel.vocab import PLANT_PARTS, SENSOR_NOUNS, STOI, VOCAB
 
@@ -25,6 +21,12 @@ KNOWN_WORDS = VOCAB[4:]  # everything except the special tokens
 
 
 def load_params(path=Path(__file__).resolve().parent / "checkpoint.pt"):
+    # Imported here so the text helpers in this file work on machines without PyTorch.
+    import torch
+
+    from langModel.model import TinyLM
+    from langModel.quantize import quantize_model
+
     model = TinyLM()
     model.load_state_dict(torch.load(path))
     model.eval()
@@ -63,7 +65,7 @@ def correct(word):
 # Returns (answer, notes). Spelling is corrected first, then the phrase is
 # normalized. Refuses to guess when a word is truly unknown, because <unk>
 # was never trained and any reply would be arbitrary.
-def reply(params, text):
+def reply(params, text, generate=generate_int):
     notes = []
     words = []
     for w in text.lower().replace("?", " ? ").split():
@@ -78,7 +80,7 @@ def reply(params, text):
         return "", notes + [f"unknown word(s): {', '.join(unknown)}"]
 
     ids = [encode_word(w) for w in words]
-    return " ".join(decode_ids(generate_int(params, ids))), notes
+    return " ".join(decode_ids(generate(params, ids))), notes
 
 
 if __name__ == "__main__":

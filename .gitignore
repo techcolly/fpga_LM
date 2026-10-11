@@ -10,3 +10,4 @@ vivado/proj/
 *.str
 *.wdb
 xsim.dir/
+vivado/build_*/

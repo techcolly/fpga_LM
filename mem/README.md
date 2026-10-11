@@ -67,6 +67,14 @@ open("embed_rom.mem", "w").write("\n".join(lines) + "\n")
 
 `W1`, `W2`, `b1`, `b2` and `E` must already be the quantized integer values (Python `int`).
 
+## Generating these files
+
+Run `python -m langModel.export_mem` from the repo root. It reads `langModel/checkpoint.pt` (or a path given on the command line), writes the three files above, and checks them against `langModel/int_infer.py` before finishing. It also writes `golden_vectors.mem`.
+
+## `golden_vectors.mem`
+
+One 40-bit hex word per line, written by the export script and used only by the simulation testbench `tb_fpga_golden`. Bytes from left to right: the expected next token, then `t3`, `t2`, `t1` and `t0`, where `t0` is the oldest context token. The expected token comes from `int_forward`.
+
 ## Test files
 
 `test_weight_rom.mem`, `test_bias_rom.mem` and `test_embed_rom.mem` hold made-up patterns that only the simulation testbench uses. Do not overwrite or delete them, and do not name real files with the `test_` prefix.

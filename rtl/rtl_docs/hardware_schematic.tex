@@ -136,43 +136,48 @@ The byte muxes and the 2:1 mux are combinational, so the activation is valid in 
 \begin{center}
 \resizebox{\textwidth}{!}{%
 \begin{tikzpicture}
+\node[reg,minimum width=2.4cm] (areg) at (-3.9,0.318) {activation\\register};
 \node[op] (mul) at (1.2,0) {$\times$};
-\node[box,minimum width=2.4cm] (se) at (3.9,0) {sign-extend\\16b $\to$ 32b};
-\node[op] (add) at (6.5,0) {$+$};
-\node[mux,minimum width=1.8cm,minimum height=2.2cm] (mx) at (8.9,0) {2:1 mux\\1: bias_i\\0: sum};
-\node[reg,minimum width=3.2cm,minimum height=2.2cm] (ar) at (12.2,0) {\textbf{acc_i}\\\scriptsize 32b signed\\enable =\\load_bias OR\\accumulate_en};
+\node[reg,minimum width=2.2cm] (preg) at (4.0,0) {product\\register};
+\node[box,minimum width=2.4cm] (se) at (7.2,0) {sign-extend\\16b $\to$ 32b};
+\node[op] (add) at (10.0,0) {$+$};
+\node[mux,minimum width=1.8cm,minimum height=2.2cm] (mx) at (12.6,0) {2:1 mux\\1: bias_i\\0: sum};
+\node[reg,minimum width=3.2cm,minimum height=2.2cm] (ar) at (16.0,0) {\textbf{acc_i}\\\scriptsize 32b signed\\enable =\\load_bias OR\\accumulate_pending};
 
-\draw[data] (-1.8,0.318) -- node[above,pos=0.3,lab]{activation[7:0] signed} (mul.north west);
+\draw[data] (-7.6,0.318) -- node[above,pos=0.4,lab]{activation[7:0]} (areg.west);
+\draw[data] (areg.east) -- (mul.north west);
 \draw[data] (-1.8,-0.318) -- node[below,pos=0.3,lab]{weight_i[7:0] signed} (mul.south west);
-\draw[data] (mul) -- node[above,lab]{p[15:0]} (se);
+\draw[data] (mul) -- (preg);
+\draw[data] (preg) -- node[above,lab]{p[15:0]} (se);
 \draw[data] (se) -- node[above,lab]{p[31:0]} (add);
 \draw[data] (add) -- node[above,lab]{sum[31:0]} (mx);
 \draw[data] (mx) -- node[above,lab]{next[31:0]} (ar);
-\draw[data] (8.9,3.2) -- node[right,lab]{bias_i[31:0]} (mx.north);
-\draw[ctrl] (8.9,-4.2) -- node[pos=0.8,left,lab]{select = load_bias} (mx.south);
-\draw[ctrl] (12.2,3.2) -- node[right,lab]{load_bias,\\accumulate_en} (ar.north);
+\draw[data] (12.6,3.2) -- node[right,lab]{bias_i[31:0]} (mx.north);
+\draw[ctrl] (12.6,-4.2) -- node[pos=0.8,left,lab]{select = load_bias} (mx.south);
+\draw[ctrl] (16.0,3.2) -- node[right,lab]{load_bias,\\accumulate_pending} (ar.north);
 \draw[data] (ar.south) -- ++(0,-1.6) -| node[pos=0.8,below,lab]{acc_i fed back} (add.south);
 
-\draw[data] (ar.east) -- node[above,lab]{acc_i[31:0]} (15.2,0);
-\draw[very thick] (15.2,2.8) -- (15.2,-2.8);
-\fill (15.2,0) circle (1.6pt);
+\draw[data] (ar.east) -- node[above,lab]{acc_i[31:0]} (19.0,0);
+\draw[very thick] (19.0,2.8) -- (19.0,-2.8);
+\fill (19.0,0) circle (1.6pt);
 
-\node[box,minimum width=3.2cm] (s1) at (18.2,2.8)  {\textbf{ReLU test}\\\scriptsize sign bit acc[31]};
-\node[box,minimum width=3.2cm] (s2) at (18.2,0)    {\textbf{overflow test}\\\scriptsize OR of acc[30:11]};
-\node[box,minimum width=3.2cm] (s3) at (18.2,-2.8) {\textbf{7-bit field}\\\scriptsize acc[10:4] (shift right 4)};
-\draw[data] (15.2,2.8) -- (s1.west);
-\draw[data] (15.2,0)   -- (s2.west);
-\draw[data] (15.2,-2.8) -- (s3.west);
+\node[box,minimum width=3.0cm] (s1) at (21.8,2.8)  {\textbf{ReLU test}\\\scriptsize sign bit acc[31]};
+\node[box,minimum width=3.0cm] (s2) at (21.8,0)    {\textbf{overflow test}\\\scriptsize OR of acc[30:11]};
+\node[box,minimum width=3.0cm] (s3) at (21.8,-2.8) {\textbf{7-bit field}\\\scriptsize acc[10:4] (shift right 4)};
+\draw[data] (19.0,2.8) -- (s1.west);
+\draw[data] (19.0,0)   -- (s2.west);
+\draw[data] (19.0,-2.8) -- (s3.west);
 
-\node[mux,minimum width=4.2cm,minimum height=6.4cm,font=\small] (pm) at (23.4,0) {\textbf{priority select}\\[2pt]acc[31] = 1: output 0\\else overflow: output 127\\else: \{1'b0, acc[10:4]\}};
+\node[mux,minimum width=3.8cm,minimum height=6.4cm,font=\small] (pm) at (26.4,0) {\textbf{priority select}\\[2pt]acc[31] = 1: output 0\\else overflow: output 127\\else: \{1'b0, acc[10:4]\}};
 \draw[data] (s1.east) -- (pm.west |- s1.east);
 \draw[data] (s2.east) -- (pm.west |- s2.east);
 \draw[data] (s3.east) -- (pm.west |- s3.east);
-\draw[data] (pm.east) -- node[above,lab]{hidden_i[7:0]\\INT8, 0 to 127} (28.2,0);
-\node[reg,minimum width=2.8cm] (hbo) at (29.9,0) {hidden_buf\\\scriptsize byte i of\\word group_index};
-\draw[data] (28.2,0) -- (hbo.west);
+\draw[data] (pm.east) -- node[above,lab]{hidden_i[7:0]\\INT8, 0 to 127} (30.0,0);
+\node[reg,minimum width=2.6cm] (hbo) at (31.4,0) {hidden_buf\\\scriptsize byte i of\\word group_index};
+\draw[data] (30.0,0) -- (hbo.west);
 
-\node[align=left,font=\small] at (13,-6.4) {Lanes 1 to 7 are identical copies. They share the activation, \texttt{load_bias}, and \texttt{accumulate_en}, and differ only in weight_i, bias_i, and the accumulator they own.\\
+\node[align=left,font=\small] at (14,-6.4) {Lanes 1 to 7 are identical copies. They share the registered activation, \texttt{load_bias}, and \texttt{accumulate_pending} (accumulate_en delayed one clock), and differ only in weight_i, bias_i, and the accumulator they own.\\
+The activation register is shared by all lanes (it lives in mac_array); the weight ROM output is already registered, so activation and weight meet at the multiplier together.\\
 Why the post-processing is only wiring and one OR: for acc $\geq$ 0, acc $\gg$ 4 $>$ 127 exactly when any of acc[30:11] is set; otherwise the 7-bit result is acc[10:4].};
 \end{tikzpicture}}
 \end{center}

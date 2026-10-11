@@ -12,7 +12,8 @@ typedef enum logic[3:0] {
     ACCUMULATE   = 4'd6,
     HIDDEN_STORE = 4'd7,
     ARGMAX       = 4'd8,
-    DONE         = 4'd9
+    DONE         = 4'd9,
+    DRAIN        = 4'd10
 } state_names_t;
 
 typedef struct packed {
@@ -25,14 +26,14 @@ typedef struct packed {
     logic      output_layer;
 } snapshot_t;
 
-localparam int TOTAL_CYCLES = 869;
+localparam int TOTAL_CYCLES = 881;
 
 logic           clk, reset, start;
 logic           input_vector_we, load_bias, accumulate_en, hidden_we, compare_en, argmax_clear, done;
 logic           output_layer;
 logic[1:0]      token_index;
 logic[2:0]      group_index, lane_index;
-logic[3:0]      bias_address;
+logic[3:0]      bias_address, state;
 logic[4:0]      input_index;
 logic[8:0]      weight_address;
 
@@ -46,7 +47,7 @@ inference_fsm dut (.*);
 initial clk = 1'b0;
 always #5 clk = ~clk;
 
-assign state_name = state_names_t'(dut.state);
+assign state_name = state_names_t'(state);
 
 function logic[6:0] expected_outputs(input logic[3:0] s);
     case (s)
@@ -87,6 +88,7 @@ task build_expected;
                 e_weight++;
             end
             e_input = 0;
+            add(DRAIN);
             if (e_layer == 0) add(HIDDEN_STORE);
             else begin
                 for (e_lane = 0; e_lane < 8; e_lane++) add(ARGMAX);
@@ -109,7 +111,7 @@ task check_cycle(input int index);
     snapshot_t actual;
     logic[6:0] actual_outputs;
 
-    actual         = '{dut.state, token_index, group_index, lane_index, input_index, weight_address, bias_address, output_layer};
+    actual         = '{state, token_index, group_index, lane_index, input_index, weight_address, bias_address, output_layer};
     actual_outputs = {input_vector_we, load_bias, accumulate_en, hidden_we, compare_en, argmax_clear, done};
 
     if (actual.state          !== expected[index].state)          mismatch(index, "state",          actual.state,          expected[index].state);
@@ -132,7 +134,7 @@ task run_inference(input int run_number);
         @(negedge clk);
     end
 
-    if (dut.state !== IDLE)  mismatch(TOTAL_CYCLES, "state after DONE", dut.state, IDLE);
+    if (state !== IDLE)  mismatch(TOTAL_CYCLES, "state after DONE", state, IDLE);
     if (argmax_clear !== 1'b1) mismatch(TOTAL_CYCLES, "argmax_clear after DONE", argmax_clear, 1);
 
     @(negedge clk);

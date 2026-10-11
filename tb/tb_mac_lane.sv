@@ -1,4 +1,4 @@
-// tb_mac_lane.sv — directed and random checks of the signed multiply-accumulate lane against an int reference.
+// tb_mac_lane.sv — directed and random checks of the pipelined multiply-accumulate lane against an int reference.
 
 module tb_mac_lane;
 
@@ -31,12 +31,14 @@ task load(input int bias_value);
     check($sformatf("load %0d", bias_value));
 endtask
 
+// one product: operands for one clock, then one more clock for the registered product to be added
 task accumulate(input int activation_value, input int weight_value);
     activation     = activation_value;
     weight         = weight_value;
     accumulate_en  = 1'b1;
     @(negedge clk);
     accumulate_en  = 1'b0;
+    @(negedge clk);
     expected_value = expected_value + activation_value * weight_value;
     check($sformatf("activation=%0d weight=%0d", activation_value, weight_value));
 endtask
@@ -45,6 +47,7 @@ task idle_cycle(input int activation_value, input int weight_value);
     activation     = activation_value;
     weight         = weight_value;
     accumulate_en  = 1'b0;
+    @(negedge clk);
     @(negedge clk);
     check("hold when accumulate_en is low");
 endtask
@@ -94,17 +97,32 @@ initial begin
     idle_cycle(100, 100);
     idle_cycle(-100, 55);
 
-    // load_bias wins if both controls are high
-    bias          = 32'sd77;
-    load_bias     = 1'b1;
-    accumulate_en = 1'b1;
-    activation    = 8'sd9;
-    weight        = 8'sd9;
+    // a bias load wins over a product that is still in the pipeline
+    activation     = 8'sd9;
+    weight         = 8'sd9;
+    accumulate_en  = 1'b1;
+    @(negedge clk);
+    accumulate_en  = 1'b0;
+    bias           = 32'sd77;
+    load_bias      = 1'b1;
     @(negedge clk);
     load_bias      = 1'b0;
-    accumulate_en  = 1'b0;
     expected_value = 77;
-    check("load_bias priority over accumulate_en");
+    check("bias load while a product is pending");
+
+    // products on consecutive clocks are all added: the pipeline accepts one product per clock
+    load(50);
+    expected_value = 50;
+    for (int step = 0; step < 8; step++) begin
+        activation     = step * 3 - 10;
+        weight         = 5 - step;
+        accumulate_en  = 1'b1;
+        expected_value = expected_value + (step * 3 - 10) * (5 - step);
+        @(negedge clk);
+    end
+    accumulate_en = 1'b0;
+    @(negedge clk);
+    check("eight back-to-back products");
 
     // worst case sum of 32 products: 32 * (-128 * -128) = 524288
     load(0);
