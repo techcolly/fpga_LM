@@ -1,7 +1,0 @@
-Running: xsim.dir/tb_inference_fsm_behav/xsimk.exe -simmode gui -wdb tb_inference_fsm_behav.wdb -simrunnum 0 -socket 56006
-Design successfully loaded
-Design Loading Memory Usage: 18844 KB (Peak: 18844 KB)
-Design Loading CPU Usage: 187 ms
-Simulation completed
-Simulation Memory Usage: 19964 KB (Peak: 19964 KB)
-Simulation CPU Usage: 296 ms
